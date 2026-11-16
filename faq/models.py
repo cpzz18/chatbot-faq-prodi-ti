@@ -28,6 +28,28 @@ class FAQ(models.Model):
         ordering = ["category", "id"]
         verbose_name = "Entri FAQ"
         verbose_name_plural = "Daftar FAQ"
+        indexes = [
+            models.Index(
+                fields=["is_active", "category", "id"],
+                name="idx_faq_active_cat_id",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    category__in=["prodi", "praktikum", "magang", "layanan"]
+                ),
+                name="chk_faq_valid_category",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(question=""),
+                name="chk_faq_question_not_empty",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(answer=""),
+                name="chk_faq_answer_not_empty",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"[{self.get_category_display()}] {self.question}"

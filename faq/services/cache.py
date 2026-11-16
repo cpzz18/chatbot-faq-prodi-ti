@@ -39,6 +39,9 @@ def invalidate_faq_cache() -> None:
 
 
 def _fetch_active_faqs_from_db() -> list[dict]:
+    queryset = FAQ.objects.filter(is_active=True).only(
+        "id", "category", "question", "keywords", "answer", "source"
+    )
     return [
         {
             "id": faq.id,
@@ -48,7 +51,7 @@ def _fetch_active_faqs_from_db() -> list[dict]:
             "answer": faq.answer,
             "source": faq.source,
         }
-        for faq in FAQ.objects.filter(is_active=True)
+        for faq in queryset
     ]
 
 

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from faq.models import FAQ
@@ -64,6 +65,31 @@ class SeedAndRagTests(TestCase):
         new_faq.is_active = False
         new_faq.save()
         self.assertEqual(len(get_active_faqs_cached()), 12)
+
+    def test_db_check_constraints_reject_invalid_category_or_empty_text(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                FAQ.objects.create(
+                    category="tidak_valid",
+                    question="Pertanyaan uji kategori salah?",
+                    answer="Jawaban uji.",
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                FAQ.objects.create(
+                    category="prodi",
+                    question="",
+                    answer="Jawaban tanpa pertanyaan.",
+                )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                FAQ.objects.create(
+                    category="prodi",
+                    question="Pertanyaan tanpa jawaban?",
+                    answer="",
+                )
 
 
 class LlmServiceTests(TestCase):
