@@ -1,0 +1,86 @@
+[
+  {
+    "category": "prodi",
+    "question": "Apa fokus pembelajaran di Program Studi Teknologi Informasi (TI) Politeknik Negeri Madiun?",
+    "keywords": "prodi ti, teknologi informasi, pnm, fokus, kurikulum, vokasi, praktik, bidang keahlian",
+    "answer": "Program Studi Teknologi Informasi (TI) PNM menerapkan pendidikan vokasi dengan porsi praktik sekitar 60-70% di laboratorium dan 30-40% teori. Kompetensi utama meliputi pengembangan perangkat lunak (web & mobile), rekayasa data & sistem cerdas (machine learning/AI), serta administrasi jaringan dan keamanan informasi.",
+    "source": "Panduan Akademik Prodi TI PNM"
+  },
+  {
+    "category": "prodi",
+    "question": "Apa saja mata kuliah atau topik peminatan yang mendukung karier pengembang software dan AI di Prodi TI?",
+    "keywords": "mata kuliah, peminatan, ai, sistem cerdas, web, backend, mobile, database, karier",
+    "answer": "Mahasiswa mempelajari Algoritma & Pemrograman, Struktur Data, Basis Data, Pemrograman Web & Mobile, Jaringan Komputer, Rekayasa Perangkat Lunak, serta Sistem Cerdas (pencarian heuristik, sistem pakar, fuzzy logic, machine learning, deep learning, dan deployment aplikasi AI).",
+    "source": "Kurikulum Prodi TI PNM"
+  },
+  {
+    "category": "praktikum",
+    "question": "Bagaimana persiapan wajib sebelum mengikuti kegiatan praktikum di laboratorium TI?",
+    "keywords": "persiapan, praktikum, lab, modul ajar, pretest, pre-test, laptop, akun lms",
+    "answer": "Sebelum masuk sesi praktikum, mahasiswa wajib membaca modul ajar pertemuan terkait, menyiapkan environment/alat praktikum sesuai daftar bahan (seperti Python/Conda atau editor kode), mengerjakan pre-test bila dijadwalkan dosen, dan memastikan akses LMS aktif untuk pengumpulan logbook atau laporan.",
+    "source": "SOP Praktikum Lab TI"
+  },
+  {
+    "category": "praktikum",
+    "question": "Apa saja aturan tata tertib di dalam Laboratorium Komputer Prodi TI?",
+    "keywords": "tata tertib, aturan lab, laboratorium, sepatu, pakaian, makan, minum, kehadiran, disiplin",
+    "answer": "Selama berada di laboratorium, mahasiswa wajib hadir tepat waktu sesuai jadwal, mengenakan pakaian rapi dan bersepatu tertutup, dilarang membawa makanan atau minuman ke dekat perangkat komputer, menjaga kebersihan meja kerja, serta mematikan/logout PC dan mengembalikan perangkat ke kondisi semula setelah praktikum selesai.",
+    "source": "Tata Tertib Laboratorium TI PNM"
+  },
+  {
+    "category": "praktikum",
+    "question": "Bagaimana komponen penilaian mata kuliah praktikum seperti Sistem Cerdas?",
+    "keywords": "nilai, penilaian, bobot, tugas mingguan, uts, uas, mini proyek, proyek akhir, partisipasi",
+    "answer": "Penilaian praktikum umumnya terdiri atas tugas mingguan/logbook notebook, keaktifan atau ujian tengah semester (UTS), mini proyek kelompok, serta proyek akhir individu beserta sesi demo dan uji pemahaman kode saat UAS. Rincian persentase tiap mata kuliah mengacu pada RPS yang dibagikan dosen di awal semester.",
+    "source": "RPS & Modul Praktikum Sistem Cerdas"
+  },
+  {
+    "category": "praktikum",
+    "question": "Bagaimana prosedur jika komputer atau jaringan laboratorium bermasalah saat praktikum, atau ingin meminjam lab di luar jam kuliah?",
+    "keywords": "rusak, error, pc, jaringan, plp, teknisi, pinjam lab, peminjaman laboratorium",
+    "answer": "Jika terjadi kendala perangkat keras atau jaringan saat praktikum, segera laporkan ke Pranata Laboratorium Pendidikan (PLP)/teknisi lab atau dosen pengampu tanpa membongkar perangkat sendiri. Untuk penggunaan atau peminjaman lab di luar jadwal kuliah, mahasiswa wajib mengajukan izin tertulis kepada Kepala Laboratorium/PLP minimal 2 hari kerja sebelumnya.",
+    "source": "SOP Layanan Laboratorium TI"
+  },
+  {
+    "category": "magang",
+    "question": "Apa syarat akademik mahasiswa Prodi TI untuk mengambil Magang atau Praktik Kerja Lapangan (PKL)?",
+    "keywords": "syarat, magang, pkl, kerja praktik, kp, sks, semester, nilai, lulus",
+    "answer": "Mahasiswa dapat mengambil mata kuliah Magang/PKL setelah menempuh semester sesuai ketentuan kurikulum (umumnya semester 5/6 untuk D3 atau semester 6/7 untuk D4), memenuhi batas minimal SKS lulus tanpa nilai E pada mata kuliah prasyarat, serta bebas tanggungan administrasi akademik dan laboratorium.",
+    "source": "Pedoman Magang / PKL Prodi TI"
+  },
+  {
+    "category": "magang",
+    "question": "Bagaimana alur pengajuan surat pengantar magang di Prodi TI?",
+    "keywords": "alur, pengajuan, surat pengantar, magang, pkl, instansi, perusahaan, koordinator, baak",
+    "answer": "Alur pengajuan surat pengantar magang: (1) mahasiswa menentukan calon instansi/perusahaan yang relevan dengan bidang TI, (2) berkonsultasi dengan Koordinator Magang Prodi TI, (3) mengisi formulir data instansi & anggota kelompok, (4) mengajukan pembuatan surat pengantar resmi melalui administrasi prodi/akademik, lalu (5) mengirimkan surat pengantar beserta CV/proposal ke instansi tujuan.",
+    "source": "Alur Administrasi Magang Prodi TI"
+  },
+  {
+    "category": "magang",
+    "question": "Berapa lama durasi pelaksanaan magang dan apa kewajiban mahasiswa selama magang di industri?",
+    "keywords": "durasi, lama, waktu magang, pkl, logbook, presensi, etika industri, jam kerja",
+    "answer": "Durasi magang mengikuti ketentuan SKS kurikulum (umumnya 1 semester penuh atau minimal 3-6 bulan sesuai program). Selama magang, mahasiswa wajib mengikuti jam kerja dan SOP instansi mitra, menjaga etika profesional dan kerahasiaan data perusahaan, mengisi logbook kegiatan harian/mingguan, serta melakukan bimbingan berkala dengan dosen pembimbing.",
+    "source": "Pedoman Magang / PKL Prodi TI"
+  },
+  {
+    "category": "magang",
+    "question": "Siapa saja pembimbing mahasiswa saat magang dan bagaimana mekanisme bimbingannya?",
+    "keywords": "pembimbing, dpl, dosen pembimbing, mentor industri, monitoring, bimbingan magang",
+    "answer": "Setiap mahasiswa magang dibimbing oleh dua pihak: Pembimbing Lapangan/Mentor dari instansi mitra yang mengawasi pekerjaan teknis harian, serta Dosen Pembimbing dari Prodi TI yang memantau kesesuaian kompetensi akademik, progres logbook, dan penyusunan laporan akhir minimal 1-2 kali setiap bulan.",
+    "source": "Pedoman Magang / PKL Prodi TI"
+  },
+  {
+    "category": "magang",
+    "question": "Apa saja luaran wajib dan tahapan setelah selesai melaksanakan magang?",
+    "keywords": "luaran, laporan magang, seminar, sidang magang, nilai magang, surat selesai, sertifikat",
+    "answer": "Setelah masa magang berakhir, mahasiswa wajib mengumpulkan: (1) surat keterangan selesai magang dari instansi, (2) lembar penilaian resmi dari pembimbing lapangan, (3) logbook yang telah disahkan, dan (4) laporan akhir magang untuk dipresentasikan pada seminar/evaluasi magang bersama dosen penguji.",
+    "source": "Pedoman Magang / PKL Prodi TI"
+  },
+  {
+    "category": "layanan",
+    "question": "Kapan dan bagaimana cara menghubungi Koordinator Praktikum, Koordinator Magang, atau Admin Prodi TI untuk konsultasi?",
+    "keywords": "kontak, jam layanan, konsultasi, koordinator, admin prodi, dosen wali, tugas akhir, pa",
+    "answer": "Konsultasi akademik, praktikum, magang, maupun pengajuan topik Tugas Akhir/Proyek Akhir dilayani pada jam kerja kampus (Senin-Jumat, 08.00-16.00 WIB) melalui ruang Admin Prodi TI, dosen wali masing-masing, atau kanal resmi grup/portal akademik Prodi TI. Mahasiswa disarankan membuat janji terlebih dahulu sebelum menemui dosen pembimbing.",
+    "source": "Layanan Akademik Prodi TI PNM"
+  }
+]
