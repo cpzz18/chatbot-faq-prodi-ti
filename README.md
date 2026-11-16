@@ -3,7 +3,7 @@
 Mini proyek Sistem Cerdas — **Chatbot FAQ ber-LLM** menggunakan **Django** (TF-IDF RAG Mini + Gemini API + Cache-Aside) dan **React 19 + TypeScript + Vite** bertema hitam muda minimalis. Aplikasi ini melayani tanya jawab seputar **Program Studi Teknologi Informasi, Praktikum Laboratorium, dan Magang/PKL**.
 
 ## Fitur Utama
-- **Basis Pengetahuan FAQ di SQLite + Django Admin** (`faq.models.FAQ`): menyimpan kategori, pertanyaan, kata kunci (`keywords`), jawaban, dan sumber. Dapat dikelola langsung via `/admin/` dan di-seed ulang secara idempoten melalui `python manage.py seed_faqs`.
+- **Basis Pengetahuan FAQ di PostgreSQL / SQLite + Django Admin** (`faq.models.FAQ`): menyimpan kategori, pertanyaan, kata kunci (`keywords`), jawaban, dan sumber. Mendukung **PostgreSQL** (`DB_ENGINE=postgres`) dengan fallback **SQLite**, dapat dikelola via `/admin/` dan di-seed ulang secara idempoten melalui `python manage.py seed_faqs`.
 - **RAG Mini (`faq/services/rag.py`)**: mengambil Top-3 FAQ paling relevan menggunakan **TF-IDF + Cosine Similarity** (`scikit-learn`) beserta skor kemiripannya. Pertanyaan di luar domain ditolak dengan sopan (`no_context`).
 - **Integrasi LLM Gemini (`faq/services/llm.py`)**: memakai SDK `google-genai` (`GEMINI_API_KEY` dari `.env`) dengan pagar anti-halusinasi agar jawaban hanya merujuk konteks FAQ yang ditemukan, dilengkapi fallback model berantai dan **fallback otomatis ke referensi lokal** bila API tidak tersedia/offline.
 - **Cache-Aside & Post-Commit Invalidation (`faq/services/cache.py`, `faq/signals.py`)**: menyimpan daftar FAQ aktif, indeks matriks TF-IDF, dan jawaban pertanyaan mandiri menggunakan TTL (`LocMemCache`), serta otomatis meng-invalidate cache via sinyal `post_save`/`post_delete` (`transaction.on_commit`).
@@ -50,7 +50,7 @@ chatbot-faq-prodi-ti/
    cd chatbot-faq-prodi-ti
    cp .env.example .env
    ```
-   Isi `GEMINI_API_KEY` di file `.env`.
+   Isi `GEMINI_API_KEY` serta kredensial PostgreSQL lokal pada file `.env` (atau ubah `DB_ENGINE=sqlite` jika ingin tanpa database server).
 
 2. **Setup & jalankan via `Makefile`:**
    ```bash
@@ -77,9 +77,7 @@ make check      # Django system check
 make test       # Unit & integration tests (9 tests)
 ```
 
-## Pembagian Tugas Kelompok
-| No | Nama & NIM | Peran & Tanggung Jawab |
-| :--- | :--- | :--- |
-| 1 | Robbin Chandra Falla A (253307059) | Arsitektur Django, RAG Mini (TF-IDF), Cache-Aside, Integrasi Gemini, & React UI |
-| 2 | *(Anggota 2 — isi nama & NIM)* | Kurasi Dataset FAQ (`faqs_prodi_ti.json`) & Dokumentasi `README.md` |
-| 3 | *(Anggota 3 — isi nama & NIM)* | Pengujian Skenario & Materi Demo UAS |
+## Identitas Pengembang (Tugas Mandiri)
+- **Nama / NIM:** Robbin Chandra Falla A (`253307059`)
+- **Program Studi:** Teknologi Informasi — Politeknik Negeri Madiun
+- **Cakupan:** Arsitektur Django + PostgreSQL/SQLite, RAG Mini (`scikit-learn` TF-IDF), Cache-Aside & Signals Invalidation, Integrasi Gemini API, Kurasi Dataset FAQ, serta Frontend React 19.
