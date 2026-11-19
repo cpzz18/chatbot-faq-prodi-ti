@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ApiKeyModal } from "./components/ApiKeyModal";
 import { ChatComposer } from "./components/ChatComposer";
 import { ChatMessageBubble } from "./components/ChatMessageBubble";
 import { FaqSidebar } from "./components/FaqSidebar";
@@ -15,6 +16,10 @@ export function App() {
     isHydrating,
     isSending,
     notice,
+    apiKeyConfig,
+    serverLlmConfigured,
+    serverProvider,
+    setApiKeyConfig,
     sendMessage,
     clearSession,
   } = useChatSession();
@@ -30,6 +35,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
     typeof window !== "undefined" ? window.innerWidth > 820 : true
   );
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState<boolean>(false);
 
   const threadEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -53,7 +59,11 @@ export function App() {
         sidebarOpen={sidebarOpen}
         hasMessages={messages.length > 0}
         isSending={isSending}
+        apiKeyConfig={apiKeyConfig}
+        serverLlmConfigured={serverLlmConfigured}
+        serverProvider={serverProvider}
         onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        onOpenApiKeyModal={() => setApiKeyModalOpen(true)}
         onClearSession={() => void clearSession()}
       />
 
@@ -122,6 +132,15 @@ export function App() {
           <ChatComposer isSending={isSending} onSend={sendMessage} />
         </main>
       </div>
+
+      <ApiKeyModal
+        open={apiKeyModalOpen}
+        currentConfig={apiKeyConfig}
+        serverLlmConfigured={serverLlmConfigured}
+        serverProvider={serverProvider}
+        onSave={setApiKeyConfig}
+        onClose={() => setApiKeyModalOpen(false)}
+      />
     </div>
   );
 }

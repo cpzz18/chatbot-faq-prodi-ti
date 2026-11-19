@@ -1,9 +1,20 @@
+import type { ApiKeyConfig } from "../types/chat";
+import {
+  detectClientProvider,
+  getProviderLabel,
+  maskApiKey,
+} from "../utils/providerDetect";
+
 interface HeaderBarProps {
   faqCount: number;
   sidebarOpen: boolean;
   hasMessages: boolean;
   isSending: boolean;
+  apiKeyConfig: ApiKeyConfig | null;
+  serverLlmConfigured: boolean;
+  serverProvider: string | null;
   onToggleSidebar: () => void;
+  onOpenApiKeyModal: () => void;
   onClearSession: () => void;
 }
 
@@ -12,9 +23,18 @@ export function HeaderBar({
   sidebarOpen,
   hasMessages,
   isSending,
+  apiKeyConfig,
   onToggleSidebar,
+  onOpenApiKeyModal,
   onClearSession,
 }: HeaderBarProps) {
+  const hasCustomKey = Boolean(apiKeyConfig?.apiKey);
+  const activeProviderLabel = hasCustomKey
+    ? getProviderLabel(
+        detectClientProvider(apiKeyConfig!.apiKey, apiKeyConfig!.provider)
+      )
+    : null;
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -62,6 +82,28 @@ export function HeaderBar({
       </div>
 
       <div className="topbar-actions">
+        <button
+          type="button"
+          className={`ghost-btn api-key-btn ${
+            hasCustomKey ? "api-key-btn-active" : "api-key-btn-unconfigured"
+          }`}
+          onClick={onOpenApiKeyModal}
+          disabled={isSending}
+          title={
+            hasCustomKey
+              ? `Key memori aktif: ${activeProviderLabel} (${maskApiKey(apiKeyConfig!.apiKey)})`
+              : "API Key belum disetel. Klik untuk memasang API Key AI Anda."
+          }
+        >
+          <span
+            className={`key-dot ${hasCustomKey ? "key-dot-on" : "key-dot-off"}`}
+            aria-hidden="true"
+          />
+          {hasCustomKey
+            ? `${activeProviderLabel} (${maskApiKey(apiKeyConfig!.apiKey)})`
+            : "API Key Belum Disetel"}
+        </button>
+
         <a
           className="ghost-link"
           href="/admin/"

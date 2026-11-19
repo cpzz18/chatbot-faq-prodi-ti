@@ -26,10 +26,14 @@ export function ChatComposer({ isSending, onSend }: ChatComposerProps) {
 
   useEffect(() => {
     function handleGlobalKeyDown(event: globalThis.KeyboardEvent) {
+      const activeTag = document.activeElement?.tagName;
+      const modalOpen = Boolean(document.querySelector(".modal-backdrop"));
       if (
         event.key === "/" &&
-        document.activeElement?.tagName !== "INPUT" &&
-        document.activeElement?.tagName !== "TEXTAREA"
+        !modalOpen &&
+        activeTag !== "INPUT" &&
+        activeTag !== "TEXTAREA" &&
+        activeTag !== "SELECT"
       ) {
         event.preventDefault();
         textareaRef.current?.focus();

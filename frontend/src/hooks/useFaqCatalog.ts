@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchFaqs } from "../api/chatApi";
 import type { FaqListItem } from "../types/chat";
 
@@ -15,10 +15,37 @@ export interface UseFaqCatalogResult {
   isLoading: boolean;
 }
 
+function getInitialSearchQuery(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("q") ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function useFaqCatalog(): UseFaqCatalogResult {
   const [items, setItems] = useState<FaqListItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQueryState] = useState<string>(getInitialSearchQuery);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const setSearchQuery = useCallback((val: string) => {
+    setSearchQueryState(val);
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        if (val.trim()) {
+          url.searchParams.set("q", val.trim());
+        } else {
+          url.searchParams.delete("q");
+        }
+        window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+      } catch {
+        // Safe fallback if history API is restricted
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
