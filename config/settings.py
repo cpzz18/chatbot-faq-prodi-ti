@@ -1,13 +1,14 @@
 from pathlib import Path
 import os
+import socket
+import warnings
 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Muat .env lokal proyek jika ada, lalu fallback ke .env di root repo
+# Muat .env lokal proyek jika ada
 load_dotenv(BASE_DIR / ".env")
-load_dotenv(BASE_DIR.parent / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-mini-proyek-faq-prodi-ti-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
@@ -55,17 +56,35 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
+def _can_reach_postgres(host: str, port: str, timeout: float = 0.8) -> bool:
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True
+    except (OSError, ValueError):
+        return False
 
-if DB_ENGINE in {"postgres", "postgresql"}:
+
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
+_pg_host = os.getenv("POSTGRES_HOST", "127.0.0.1")
+_pg_port = os.getenv("POSTGRES_PORT", "5432")
+
+_use_postgres = DB_ENGINE in {"postgres", "postgresql"} and _can_reach_postgres(_pg_host, _pg_port)
+if DB_ENGINE in {"postgres", "postgresql"} and not _use_postgres:
+    warnings.warn(
+        f"PostgreSQL di {_pg_host}:{_pg_port} tidak terjangkau, beralih otomatis ke SQLite (db.sqlite3).",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
+if _use_postgres:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": os.getenv("POSTGRES_DB", "chatbot_faq_ti"),
             "USER": os.getenv("POSTGRES_USER", "faq_user"),
             "PASSWORD": os.getenv("POSTGRES_PASSWORD", "faq_pass"),
-            "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
-            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "HOST": _pg_host,
+            "PORT": _pg_port,
             "CONN_MAX_AGE": 60,
             "CONN_HEALTH_CHECKS": True,
             "OPTIONS": {
@@ -107,3 +126,12 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# OWASP & Production Security Hardening (Agent_Memory 04 & 07)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
