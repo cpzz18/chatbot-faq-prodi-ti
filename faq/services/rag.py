@@ -1,11 +1,11 @@
 from sklearn.metrics.pairwise import cosine_similarity
 
-from faq.services.cache import get_tfidf_bundle
+from faq.services.cache import get_tfidf_bundle, normalize_rag_text
 
 
 def retrieve_faqs(query: str, top_k: int = 3, min_score: float = 0.08) -> list[dict]:
     """Cari top-k entri FAQ paling relevan menggunakan indeks TF-IDF ter-cache."""
-    cleaned_query = (query or "").strip().lower()
+    cleaned_query = normalize_rag_text(query)
     if not cleaned_query:
         return []
 

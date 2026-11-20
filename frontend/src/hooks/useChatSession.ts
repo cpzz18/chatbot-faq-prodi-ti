@@ -4,7 +4,7 @@ import {
   resetChatHistory,
   sendChatMessage,
 } from "../api/chatApi";
-import type { ChatMessage } from "../types/chat";
+import type { ApiKeyConfig, ChatMessage } from "../types/chat";
 
 export interface UseChatSessionResult {
   messages: ChatMessage[];
@@ -13,6 +13,11 @@ export interface UseChatSessionResult {
   isHydrating: boolean;
   isSending: boolean;
   notice: string | null;
+  apiKeyConfig: ApiKeyConfig | null;
+  serverLlmConfigured: boolean;
+  serverProvider: string | null;
+  setApiKeyConfig: (config: ApiKeyConfig | null) => void;
+  clearApiKey: () => void;
   sendMessage: (rawText: string) => Promise<void>;
   clearSession: () => Promise<void>;
 }
@@ -24,6 +29,10 @@ export function useChatSession(): UseChatSessionResult {
   const [isHydrating, setIsHydrating] = useState<boolean>(true);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // RAM-only browser state: tidak pernah ditulis ke localStorage, sessionStorage, atau cookie.
+  const [apiKeyConfig, setApiKeyConfigState] = useState<ApiKeyConfig | null>(null);
+  const [serverLlmConfigured, setServerLlmConfigured] = useState<boolean>(false);
+  const [serverProvider, setServerProvider] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +42,8 @@ export function useChatSession(): UseChatSessionResult {
         setMessages(state.history);
         setFaqCount(state.faq_count);
         setQuickPrompts(state.quick_prompts);
+        setServerLlmConfigured(Boolean(state.server_llm_configured));
+        setServerProvider(state.server_provider ?? null);
       })
       .catch(() => {
         if (mounted) {
@@ -48,6 +59,29 @@ export function useChatSession(): UseChatSessionResult {
     };
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  const setApiKeyConfig = useCallback((config: ApiKeyConfig | null) => {
+    if (!config || !config.apiKey.trim()) {
+      setApiKeyConfigState(null);
+      return;
+    }
+    setApiKeyConfigState({
+      apiKey: config.apiKey.trim(),
+      provider: config.provider,
+    });
+  }, []);
+
+  const clearApiKey = useCallback(() => {
+    setApiKeyConfigState(null);
+  }, []);
+
   const sendMessage = useCallback(
     async (rawText: string) => {
       const trimmed = rawText.trim();
@@ -58,7 +92,7 @@ export function useChatSession(): UseChatSessionResult {
       setIsSending(true);
 
       try {
-        const res = await sendChatMessage(trimmed);
+        const res = await sendChatMessage(trimmed, apiKeyConfig);
         setMessages((prev) => [
           ...prev,
           {
@@ -66,6 +100,7 @@ export function useChatSession(): UseChatSessionResult {
             text: res.reply,
             mode: res.mode,
             model: res.model,
+            provider: res.provider,
             sources: res.sources,
             cached: res.cached,
           },
@@ -80,7 +115,7 @@ export function useChatSession(): UseChatSessionResult {
         setIsSending(false);
       }
     },
-    [isSending]
+    [apiKeyConfig, isSending]
   );
 
   const clearSession = useCallback(async () => {
@@ -101,6 +136,11 @@ export function useChatSession(): UseChatSessionResult {
     isHydrating,
     isSending,
     notice,
+    apiKeyConfig,
+    serverLlmConfigured,
+    serverProvider,
+    setApiKeyConfig,
+    clearApiKey,
     sendMessage,
     clearSession,
   };

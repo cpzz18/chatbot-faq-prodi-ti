@@ -1,4 +1,5 @@
 import type {
+  ApiKeyConfig,
   ChatApiResponse,
   ChatStateResponse,
   FaqListResponse,
@@ -53,14 +54,27 @@ export function fetchFaqs(): Promise<FaqListResponse> {
   return deduplicatedGet<FaqListResponse>("/api/faqs/");
 }
 
-export async function sendChatMessage(message: string): Promise<ChatApiResponse> {
+export async function sendChatMessage(
+  message: string,
+  apiKeyConfig?: ApiKeyConfig | null
+): Promise<ChatApiResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-CSRFToken": getCsrfToken(),
+  };
+
+  const trimmedKey = apiKeyConfig?.apiKey.trim();
+  if (trimmedKey) {
+    headers["X-LLM-API-Key"] = trimmedKey;
+    if (apiKeyConfig?.provider) {
+      headers["X-LLM-Provider"] = apiKeyConfig.provider;
+    }
+  }
+
   const res = await fetch("/api/chat/", {
     method: "POST",
     credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCsrfToken(),
-    },
+    headers,
     body: JSON.stringify({ message }),
   });
   return parseJsonOrThrow<ChatApiResponse>(res);

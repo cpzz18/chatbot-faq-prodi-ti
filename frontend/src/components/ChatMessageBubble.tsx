@@ -1,4 +1,6 @@
 import type { ChatMessage } from "../types/chat";
+import { getProviderLabel } from "../utils/providerDetect";
+import { MarkdownContent } from "./MarkdownContent";
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -10,7 +12,7 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
   const getModeLabel = (): string | null => {
     if (!message.mode) return null;
     if (message.mode === "rag_llm") {
-      const modelLabel = message.model ?? "Gemini";
+      const modelLabel = message.model ?? getProviderLabel(message.provider);
       return message.cached
         ? `RAG · ${modelLabel} · Cache`
         : `RAG · ${modelLabel}`;
@@ -26,7 +28,9 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
   return (
     <article className={`message-row ${message.role}`}>
       <div className="message-role">{isBot ? "Asisten TI" : "Anda"}</div>
-      <div className="message-bubble">{message.text}</div>
+      <div className="message-bubble">
+        {isBot ? <MarkdownContent content={message.text} /> : message.text}
+      </div>
 
       {isBot && modeLabel && (
         <footer className="message-meta">

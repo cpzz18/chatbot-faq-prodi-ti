@@ -1,4 +1,5 @@
 import hashlib
+import random
 import re
 from typing import Any
 
@@ -10,6 +11,107 @@ from faq.models import FAQ
 FAQ_LIST_TTL_SECONDS = 300
 LLM_REPLY_TTL_SECONDS = 600
 _VERSION_KEY = "faq:cache_version"
+
+
+def _with_ttl_jitter(base_seconds: int, jitter_ratio: float = 0.15) -> int:
+    """Tambahkan random jitter (+-15%) pada TTL untuk mencegah cache stampede / thundering herd."""
+    if base_seconds <= 0:
+        return base_seconds
+    multiplier = random.uniform(1.0 - jitter_ratio, 1.0 + jitter_ratio)
+    return max(1, int(base_seconds * multiplier))
+
+_RAG_STOPWORDS = frozenset(
+    {
+        "apa",
+        "apakah",
+        "aja",
+        "saja",
+        "sih",
+        "yang",
+        "ada",
+        "di",
+        "ke",
+        "dari",
+        "untuk",
+        "buat",
+        "dengan",
+        "dan",
+        "atau",
+        "nya",
+        "itu",
+        "ini",
+        "dong",
+        "deh",
+        "nih",
+        "lah",
+        "kah",
+        "gimana",
+        "bagaimana",
+        "kenapa",
+        "kapan",
+        "siapa",
+        "mana",
+        "berapa",
+        "bisa",
+        "boleh",
+        "ya",
+        "kak",
+        "min",
+        "pak",
+        "bu",
+    }
+)
+
+_RAG_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "matkul": ("mata", "kuliah", "kurikulum"),
+    "makul": ("mata", "kuliah", "kurikulum"),
+    "mk": ("mata", "kuliah", "kurikulum"),
+    "pelajaran": ("mata", "kuliah", "kurikulum"),
+    "tatib": ("tata", "tertib", "aturan"),
+    "kp": ("magang", "pkl", "kerja", "praktik"),
+    "pkl": ("magang", "pkl"),
+    "internship": ("magang", "pkl"),
+    "ta": ("tugas", "akhir", "proyek", "akhir"),
+    "pa": ("proyek", "akhir", "tugas", "akhir"),
+    "skripsi": ("tugas", "akhir", "proyek", "akhir"),
+    "lab": ("laboratorium", "praktikum"),
+    "dpl": ("dosen", "pembimbing"),
+    "dosbing": ("dosen", "pembimbing"),
+    "bobot": ("komponen", "penilaian", "nilai"),
+    "akreditasi": ("akreditasi", "baik", "ban", "pt", "sk", "profil"),
+    "visi": ("visi", "misi", "tujuan"),
+    "misi": ("visi", "misi", "tujuan"),
+    "lulusan": ("profil", "lulusan", "prospek", "karier", "programmer", "software", "network", "it", "preneur"),
+    "prospek": ("profil", "lulusan", "karier", "kerja", "profesi"),
+    "karier": ("profil", "lulusan", "prospek", "kerja", "profesi"),
+    "profesi": ("profil", "lulusan", "prospek", "karier", "kerja"),
+    "dosen": ("dosen", "tenaga", "pengajar", "kualifikasi", "magister", "doktor"),
+    "pengajar": ("dosen", "tenaga", "pengajar", "kualifikasi"),
+    "fasilitas": ("fasilitas", "laboratorium", "sarana", "prasarana", "infrastruktur", "lab"),
+    "sarana": ("fasilitas", "laboratorium", "sarana", "prasarana"),
+    "siakad": ("portal", "siakad", "krs", "khs", "layanan", "akademik", "jadwal"),
+    "krs": ("siakad", "krs", "khs", "portal"),
+    "khs": ("siakad", "krs", "khs", "portal"),
+    "repo": ("repositori", "repo", "tugas", "akhir", "ta", "publikasi"),
+    "repositori": ("repositori", "repo", "tugas", "akhir", "ta"),
+    "pmb": ("pmb", "pendaftaran", "mahasiswa", "baru", "masuk"),
+    "web": ("website", "ti", "pnm", "portal"),
+    "website": ("website", "ti", "pnm", "portal"),
+}
+
+
+def normalize_rag_text(text: str) -> str:
+    """Normalisasi teks query/korpus RAG: bersihkan tanda baca, buang stopwords percakapan, dan perluas singkatan kampus."""
+    cleaned = re.sub(r"[^\w\s]", " ", (text or "").lower())
+    tokens: list[str] = []
+    for token in cleaned.split():
+        if token in _RAG_STOPWORDS:
+            continue
+        tokens.append(token)
+        synonyms = _RAG_SYNONYMS.get(token)
+        if synonyms:
+            tokens.extend(synonyms)
+    return " ".join(tokens)
 
 _TFIDF_MEMORY_CACHE: dict[str, Any] = {
     "version": None,
@@ -39,6 +141,9 @@ def invalidate_faq_cache() -> None:
 
 
 def _fetch_active_faqs_from_db() -> list[dict]:
+    queryset = FAQ.objects.filter(is_active=True).only(
+        "id", "category", "question", "keywords", "answer", "source"
+    )
     return [
         {
             "id": faq.id,
@@ -48,18 +153,18 @@ def _fetch_active_faqs_from_db() -> list[dict]:
             "answer": faq.answer,
             "source": faq.source,
         }
-        for faq in FAQ.objects.filter(is_active=True)
+        for faq in queryset
     ]
 
 
 def get_active_faqs_cached() -> list[dict]:
-    """Cache-Aside untuk daftar FAQ aktif (High Read, Low Write)."""
+    """Cache-Aside untuk daftar FAQ aktif (High Read, Low Write) dengan TTL Jitter."""
     version = get_cache_version()
     cache_key = f"faq:v{version}:active_list"
     return cache.get_or_set(
         cache_key,
         _fetch_active_faqs_from_db,
-        timeout=FAQ_LIST_TTL_SECONDS,
+        timeout=_with_ttl_jitter(FAQ_LIST_TTL_SECONDS),
     )
 
 
@@ -83,7 +188,11 @@ def get_tfidf_bundle() -> tuple[list[dict], TfidfVectorizer, Any] | None:
         )
 
     corpus = [
-        f"{item['question']} {item['keywords']} {item['answer']}".lower()
+        normalize_rag_text(
+            f"{item['question']} {item['question']} {item['question']} "
+            f"{item['keywords']} {item['keywords']} {item['keywords']} "
+            f"{item['answer']}"
+        )
         for item in faqs
     ]
     vectorizer = TfidfVectorizer(ngram_range=(1, 2))
@@ -100,25 +209,25 @@ def get_tfidf_bundle() -> tuple[list[dict], TfidfVectorizer, Any] | None:
     return faqs, vectorizer, doc_matrix
 
 
-def _build_query_cache_key(query: str) -> str:
+def _build_query_cache_key(query: str, scope: str = "default") -> str:
     version = get_cache_version()
     normalized = re.sub(r"[^\w\s]", " ", (query or "").lower())
     normalized = " ".join(normalized.split())
-    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:24]
+    digest = hashlib.sha256(f"{scope}:{normalized}".encode("utf-8")).hexdigest()[:24]
     return f"faq:v{version}:llm:{digest}"
 
 
-def get_cached_llm_reply(query: str) -> dict | None:
+def get_cached_llm_reply(query: str, scope: str = "default") -> dict | None:
     """Ambil jawaban LLM ter-cache untuk pertanyaan mandiri yang berulang."""
-    return cache.get(_build_query_cache_key(query))
+    return cache.get(_build_query_cache_key(query, scope=scope))
 
 
-def set_cached_llm_reply(query: str, result: dict) -> None:
-    """Simpan jawaban LLM (hanya mode rag_llm) dengan TTL terukur."""
+def set_cached_llm_reply(query: str, result: dict, scope: str = "default") -> None:
+    """Simpan jawaban LLM (hanya mode rag_llm) dengan TTL Jitter terukur."""
     if result.get("mode") != "rag_llm":
         return
     cache.set(
-        _build_query_cache_key(query),
+        _build_query_cache_key(query, scope=scope),
         {**result, "cached": True},
-        timeout=LLM_REPLY_TTL_SECONDS,
+        timeout=_with_ttl_jitter(LLM_REPLY_TTL_SECONDS),
     )

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchFaqs } from "../api/chatApi";
 import type { FaqListItem } from "../types/chat";
 
@@ -15,10 +15,37 @@ export interface UseFaqCatalogResult {
   isLoading: boolean;
 }
 
+function getInitialSearchQuery(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("q") ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function useFaqCatalog(): UseFaqCatalogResult {
   const [items, setItems] = useState<FaqListItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQueryState] = useState<string>(getInitialSearchQuery);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const setSearchQuery = useCallback((val: string) => {
+    setSearchQueryState(val);
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        if (val.trim()) {
+          url.searchParams.set("q", val.trim());
+        } else {
+          url.searchParams.delete("q");
+        }
+        window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+      } catch {
+        // Safe fallback if history API is restricted
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -59,10 +86,24 @@ export function useFaqCatalog(): UseFaqCatalogResult {
       }
     }
 
-    return Array.from(map.entries()).map(([category, categoryItems]) => ({
-      category,
-      items: categoryItems,
-    }));
+    const CATEGORY_ORDER: Record<string, number> = {
+      "Profil & Akademik Prodi TI": 0,
+      "Praktikum & Laboratorium": 1,
+      "Magang / PKL": 2,
+      "Layanan & Tugas Akhir": 3,
+    };
+
+    return Array.from(map.entries())
+      .map(([category, categoryItems]) => ({
+        category,
+        items: categoryItems,
+      }))
+      .sort((a, b) => {
+        const orderA = CATEGORY_ORDER[a.category] ?? 99;
+        const orderB = CATEGORY_ORDER[b.category] ?? 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.category.localeCompare(b.category);
+      });
   }, [items, searchQuery]);
 
   return {

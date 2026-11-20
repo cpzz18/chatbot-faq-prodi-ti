@@ -10,10 +10,15 @@ const MAX_LENGTH = 500;
 
 interface ChatComposerProps {
   isSending: boolean;
+  variant?: "docked" | "hero";
   onSend: (text: string) => Promise<void>;
 }
 
-export function ChatComposer({ isSending, onSend }: ChatComposerProps) {
+export function ChatComposer({
+  isSending,
+  variant = "docked",
+  onSend,
+}: ChatComposerProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -26,10 +31,14 @@ export function ChatComposer({ isSending, onSend }: ChatComposerProps) {
 
   useEffect(() => {
     function handleGlobalKeyDown(event: globalThis.KeyboardEvent) {
+      const activeTag = document.activeElement?.tagName;
+      const modalOpen = Boolean(document.querySelector(".modal-backdrop"));
       if (
         event.key === "/" &&
-        document.activeElement?.tagName !== "INPUT" &&
-        document.activeElement?.tagName !== "TEXTAREA"
+        !modalOpen &&
+        activeTag !== "INPUT" &&
+        activeTag !== "TEXTAREA" &&
+        activeTag !== "SELECT"
       ) {
         event.preventDefault();
         textareaRef.current?.focus();
@@ -60,7 +69,7 @@ export function ChatComposer({ isSending, onSend }: ChatComposerProps) {
   }
 
   return (
-    <div className="composer-shell">
+    <div className={`composer-shell ${variant === "hero" ? "composer-hero" : ""}`}>
       <form className="composer-box" onSubmit={handleFormSubmit}>
         <textarea
           ref={textareaRef}
