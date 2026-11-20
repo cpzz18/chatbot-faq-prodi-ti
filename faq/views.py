@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 
 from django.conf import settings
@@ -15,6 +16,8 @@ from faq.services.llm import (
     generate_rag_answer,
 )
 from faq.services.rag import retrieve_faqs
+
+logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_LENGTH = 500
 MAX_SESSION_HISTORY = 20
@@ -155,6 +158,9 @@ def readyz_probe(request):
         checks["cache"] = f"unhealthy: {exc}"
         is_ready = False
 
+    if not is_ready:
+        logger.warning("Readiness probe failed [request_id=%s checks=%s]", req_id, checks)
+
     status_code = 200 if is_ready else 503
     response = JsonResponse(
         {
@@ -197,6 +203,11 @@ def chat_api(request):
 
     # Rate limiting guard (Agent_Memory 04)
     if not _check_rate_limit(request, max_requests=30, window_seconds=60):
+        logger.warning(
+            "Chat rate limit exceeded [request_id=%s ip=%s]",
+            req_id,
+            _get_client_ip(request),
+        )
         return _api_error(
             request,
             error_code="RATE_LIMIT_EXCEEDED",
