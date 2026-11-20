@@ -6,6 +6,7 @@ interface MarkdownContentProps {
 
 function normalizeHtmlTagsToMarkdown(raw: string): string {
   return raw
+    .replace(/<(https?:\/\/[^\s>]+)>/gi, "[$1]($1)")
     .replace(/<\/?(?:ul|ol)\b[^>]*>/gi, "")
     .replace(/<li\b[^>]*>/gi, " • ")
     .replace(/<\/li\b[^>]*>/gi, "")
@@ -20,7 +21,7 @@ function normalizeHtmlTagsToMarkdown(raw: string): string {
 function renderInline(text: string): React.ReactNode[] {
   const normalized = normalizeHtmlTagsToMarkdown(text);
   const tokenRegex =
-    /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|\n)/g;
+    /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s<)\]]+|\n)/g;
   const parts = normalized.split(tokenRegex);
 
   return parts.map((part, idx) => {
@@ -54,6 +55,25 @@ function renderInline(text: string): React.ReactNode[] {
         >
           {linkMatch[1]}
         </a>
+      );
+    }
+
+    if (part.startsWith("http://") || part.startsWith("https://")) {
+      const trailingMatch = part.match(/^(https?:\/\/.+?)([.,;:!?]+)$/);
+      const cleanUrl = trailingMatch ? trailingMatch[1] : part;
+      const trailing = trailingMatch ? trailingMatch[2] : "";
+      return (
+        <React.Fragment key={idx}>
+          <a
+            href={cleanUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="chat-link"
+          >
+            {cleanUrl}
+          </a>
+          {trailing}
+        </React.Fragment>
       );
     }
 
@@ -174,21 +194,38 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
 
     if (trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.includes("|")) {
       const tableLines: string[] = [];
+      let nextIdx = idx;
       while (
-        idx < rawLines.length &&
-        rawLines[idx].trim().startsWith("|") &&
-        rawLines[idx].trim().includes("|")
+        nextIdx < rawLines.length &&
+        rawLines[nextIdx].trim().startsWith("|") &&
+        rawLines[nextIdx].trim().includes("|")
       ) {
-        tableLines.push(rawLines[idx]);
-        idx++;
+        tableLines.push(rawLines[nextIdx]);
+        nextIdx++;
       }
       const tableNode = parseMarkdownTable(tableLines, blockKey++);
       if (tableNode) {
         elements.push(tableNode);
+        idx = nextIdx;
         continue;
       }
     }
 
+    if (/^(?:[-*_]\s*){3,}$/.test(trimmed)) {
+      elements.push(<hr key={`hr-${blockKey++}`} className="chat-divider" />);
+      idx++;
+      continue;
+    }
+
+    if (trimmed.startsWith("#### ")) {
+      elements.push(
+        <h4 key={`h4-${blockKey++}`} className="chat-h4">
+          {renderInline(trimmed.slice(5))}
+        </h4>
+      );
+      idx++;
+      continue;
+    }
     if (trimmed.startsWith("### ")) {
       elements.push(
         <h3 key={`h3-${blockKey++}`} className="chat-h3">
@@ -291,6 +328,7 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
       !rawLines[idx].trim().startsWith("#") &&
       !rawLines[idx].trim().startsWith(">") &&
       !(rawLines[idx].trim().startsWith("|") && rawLines[idx].trim().endsWith("|")) &&
+      !/^(?:[-*_]\s*){3,}$/.test(rawLines[idx].trim()) &&
       !/^[-*•]\s+/.test(rawLines[idx].trim()) &&
       !/^\d+\.\s+/.test(rawLines[idx].trim())
     ) {
