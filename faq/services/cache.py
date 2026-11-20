@@ -10,6 +10,7 @@ from faq.models import FAQ
 
 FAQ_LIST_TTL_SECONDS = 300
 LLM_REPLY_TTL_SECONDS = 600
+PREFERRED_MODEL_TTL_SECONDS = 1800
 _VERSION_KEY = "faq:cache_version"
 
 
@@ -230,4 +231,22 @@ def set_cached_llm_reply(query: str, result: dict, scope: str = "default") -> No
         _build_query_cache_key(query, scope=scope),
         {**result, "cached": True},
         timeout=_with_ttl_jitter(LLM_REPLY_TTL_SECONDS),
+    )
+
+
+def get_preferred_model(scope: str) -> str | None:
+    """Ambil nama model terakhir yang terbukti aktif untuk scope provider/key tertentu."""
+    if not scope:
+        return None
+    return cache.get(f"faq:working_model:{scope}")
+
+
+def set_preferred_model(scope: str, model_name: str) -> None:
+    """Simpan nama model yang sukses merespons untuk menghindari retry 404 berulang."""
+    if not scope or not model_name:
+        return
+    cache.set(
+        f"faq:working_model:{scope}",
+        model_name,
+        timeout=_with_ttl_jitter(PREFERRED_MODEL_TTL_SECONDS),
     )
