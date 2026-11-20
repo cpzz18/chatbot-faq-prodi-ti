@@ -86,10 +86,24 @@ export function useFaqCatalog(): UseFaqCatalogResult {
       }
     }
 
-    return Array.from(map.entries()).map(([category, categoryItems]) => ({
-      category,
-      items: categoryItems,
-    }));
+    const CATEGORY_ORDER: Record<string, number> = {
+      "Profil & Akademik Prodi TI": 0,
+      "Praktikum & Laboratorium": 1,
+      "Magang / PKL": 2,
+      "Layanan & Tugas Akhir": 3,
+    };
+
+    return Array.from(map.entries())
+      .map(([category, categoryItems]) => ({
+        category,
+        items: categoryItems,
+      }))
+      .sort((a, b) => {
+        const orderA = CATEGORY_ORDER[a.category] ?? 99;
+        const orderB = CATEGORY_ORDER[b.category] ?? 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.category.localeCompare(b.category);
+      });
   }, [items, searchQuery]);
 
   return {
