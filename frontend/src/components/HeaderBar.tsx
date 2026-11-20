@@ -104,14 +104,6 @@ export function HeaderBar({
             : "API Key Belum Disetel"}
         </button>
 
-        <a
-          className="ghost-link"
-          href="/admin/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Admin
-        </a>
         <button
           type="button"
           className="ghost-btn"

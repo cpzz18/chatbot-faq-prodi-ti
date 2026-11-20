@@ -59,6 +59,14 @@ export function useChatSession(): UseChatSessionResult {
     };
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const setApiKeyConfig = useCallback((config: ApiKeyConfig | null) => {
     if (!config || !config.apiKey.trim()) {
       setApiKeyConfigState(null);

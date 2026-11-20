@@ -10,10 +10,15 @@ const MAX_LENGTH = 500;
 
 interface ChatComposerProps {
   isSending: boolean;
+  variant?: "docked" | "hero";
   onSend: (text: string) => Promise<void>;
 }
 
-export function ChatComposer({ isSending, onSend }: ChatComposerProps) {
+export function ChatComposer({
+  isSending,
+  variant = "docked",
+  onSend,
+}: ChatComposerProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -64,7 +69,7 @@ export function ChatComposer({ isSending, onSend }: ChatComposerProps) {
   }
 
   return (
-    <div className="composer-shell">
+    <div className={`composer-shell ${variant === "hero" ? "composer-hero" : ""}`}>
       <form className="composer-box" onSubmit={handleFormSubmit}>
         <textarea
           ref={textareaRef}

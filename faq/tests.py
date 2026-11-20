@@ -394,7 +394,7 @@ class ChatViewsTests(TestCase):
     def test_chat_page_and_faq_list_api(self):
         res = self.client.get("/")
         self.assertEqual(res.status_code, 200)
-        self.assertContains(res, "Chatbot FAQ Prodi TI")
+        self.assertContains(res, "Asisten Akademik TI")
         self.assertIn("csrftoken", res.cookies)
 
         state_res = self.client.get("/api/chat/state/")
