@@ -7,9 +7,11 @@ interface FaqSidebarProps {
   searchQuery: string;
   activeQuestion?: string | null;
   isLoading: boolean;
+  error: string | null;
   isSending: boolean;
   onSearchChange: (value: string) => void;
   onSelectQuestion: (question: string) => void;
+  onRetry: () => void;
 }
 
 export function FaqSidebar({
@@ -18,9 +20,11 @@ export function FaqSidebar({
   searchQuery,
   activeQuestion,
   isLoading,
+  error,
   isSending,
   onSearchChange,
   onSelectQuestion,
+  onRetry,
 }: FaqSidebarProps) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
 
@@ -91,6 +95,17 @@ export function FaqSidebar({
       <div className="sidebar-body">
         {isLoading ? (
           <div className="sidebar-empty">Memuat daftar referensi...</div>
+        ) : error ? (
+          <div className="sidebar-error" role="alert">
+            <p>{error}</p>
+            <button
+              type="button"
+              className="ghost-btn sidebar-retry-btn"
+              onClick={onRetry}
+            >
+              Coba Lagi
+            </button>
+          </div>
         ) : groups.length === 0 ? (
           <div className="sidebar-empty">Tidak ada topik yang cocok.</div>
         ) : (
