@@ -9,7 +9,12 @@ import time
 import urllib.error
 import urllib.request
 
-from faq.services.cache import get_cached_llm_reply, set_cached_llm_reply
+from faq.services.cache import (
+    get_cached_llm_reply,
+    get_preferred_model,
+    set_cached_llm_reply,
+    set_preferred_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +54,13 @@ PROVIDER_CONFIGS: dict[str, dict] = {
         "endpoint": "https://api.groq.com/openai/v1/chat/completions",
         "models_endpoint": "https://api.groq.com/openai/v1/models",
         "models": [
+            "openai/gpt-oss-120b",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "openai/gpt-oss-20b",
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "meta-llama/llama-4-maverick-17b-128e-instruct",
             "qwen/qwen3-32b",
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
         ],
     },
     "anthropic": {
@@ -721,11 +726,17 @@ def generate_rag_answer(
     prompt = _build_rag_prompt(query, retrieved_faqs, history)
     cfg = PROVIDER_CONFIGS.get(resolved_provider, PROVIDER_CONFIGS["gemini"])
     adapter = cfg["adapter"]
+    preferred_model = get_preferred_model(cache_scope)
+    candidate_models = (
+        [preferred_model] + [m for m in cfg["models"] if m != preferred_model]
+        if preferred_model
+        else list(cfg["models"])
+    )
 
     if adapter == "gemini":
         text, used_model, err_reason = _call_gemini(
             resolved_key,
-            cfg["models"],
+            candidate_models,
             prompt,
             client_factory=client_factory,
         )
@@ -734,7 +745,7 @@ def generate_rag_answer(
             resolved_key,
             cfg["endpoint"],
             cfg["models_endpoint"],
-            cfg["models"],
+            candidate_models,
             prompt,
             opener=http_opener,
         )
@@ -744,12 +755,14 @@ def generate_rag_answer(
             resolved_provider,
             cfg["endpoint"],
             cfg["models_endpoint"],
-            cfg["models"],
+            candidate_models,
             prompt,
             opener=http_opener,
         )
 
     if text:
+        if used_model:
+            set_preferred_model(cache_scope, used_model)
         result = {
             "reply": text,
             "mode": "rag_llm",

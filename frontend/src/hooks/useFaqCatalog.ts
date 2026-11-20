@@ -13,7 +13,16 @@ export interface UseFaqCatalogResult {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   isLoading: boolean;
+  error: string | null;
+  retry: () => void;
 }
+
+const CATEGORY_ORDER: Record<string, number> = {
+  "Profil & Akademik Prodi TI": 0,
+  "Praktikum & Laboratorium": 1,
+  "Magang / PKL": 2,
+  "Layanan & Tugas Akhir": 3,
+};
 
 function getInitialSearchQuery(): string {
   if (typeof window === "undefined") return "";
@@ -29,6 +38,8 @@ export function useFaqCatalog(): UseFaqCatalogResult {
   const [items, setItems] = useState<FaqListItem[]>([]);
   const [searchQuery, setSearchQueryState] = useState<string>(getInitialSearchQuery);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState<number>(0);
 
   const setSearchQuery = useCallback((val: string) => {
     setSearchQueryState(val);
@@ -47,14 +58,31 @@ export function useFaqCatalog(): UseFaqCatalogResult {
     }
   }, []);
 
+  const retry = useCallback(() => {
+    setReloadTick((prev) => prev + 1);
+  }, []);
+
   useEffect(() => {
     let mounted = true;
+    setIsLoading(true);
+    setError(null);
+
     fetchFaqs()
       .then((res) => {
-        if (mounted) setItems(res.faqs);
+        if (mounted) {
+          setItems(res.faqs);
+          setError(null);
+        }
       })
-      .catch(() => {
-        if (mounted) setItems([]);
+      .catch((err) => {
+        if (mounted) {
+          setItems([]);
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Gagal memuat daftar topik FAQ dari server."
+          );
+        }
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -63,7 +91,7 @@ export function useFaqCatalog(): UseFaqCatalogResult {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [reloadTick]);
 
   const groups = useMemo<FaqCategoryGroup[]>(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -86,13 +114,6 @@ export function useFaqCatalog(): UseFaqCatalogResult {
       }
     }
 
-    const CATEGORY_ORDER: Record<string, number> = {
-      "Profil & Akademik Prodi TI": 0,
-      "Praktikum & Laboratorium": 1,
-      "Magang / PKL": 2,
-      "Layanan & Tugas Akhir": 3,
-    };
-
     return Array.from(map.entries())
       .map(([category, categoryItems]) => ({
         category,
@@ -112,5 +133,7 @@ export function useFaqCatalog(): UseFaqCatalogResult {
     searchQuery,
     setSearchQuery,
     isLoading,
+    error,
+    retry,
   };
 }

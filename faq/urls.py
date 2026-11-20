@@ -6,6 +6,11 @@ app_name = "faq"
 
 urlpatterns = [
     path("", views.chat_page, name="chat_page"),
+    path(
+        ".well-known/appspecific/com.chrome.devtools.json",
+        views.chrome_devtools_well_known,
+        name="chrome_devtools_well_known",
+    ),
     path("healthz", views.healthz_probe, name="healthz_bare"),
     path("healthz/", views.healthz_probe, name="healthz"),
     path("readyz", views.readyz_probe, name="readyz_bare"),

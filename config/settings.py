@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import socket
+from urllib.parse import parse_qs, unquote, urlparse
 import warnings
 
 from dotenv import load_dotenv
@@ -13,8 +14,11 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-mini-proyek-faq-prodi-ti-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 
-_raw_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver")
+_raw_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver,.vercel.app")
 ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(",") if h.strip()]
+
+_raw_csrf = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.vercel.app")
+CSRF_TRUSTED_ORIGINS = [u.strip() for u in _raw_csrf.split(",") if u.strip()]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -28,6 +32,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -64,46 +69,67 @@ def _can_reach_postgres(host: str, port: str, timeout: float = 0.8) -> bool:
         return False
 
 
+_database_url = (os.getenv("DATABASE_URL") or "").strip()
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
 _pg_host = os.getenv("POSTGRES_HOST", "127.0.0.1")
 _pg_port = os.getenv("POSTGRES_PORT", "5432")
 
-_use_postgres = DB_ENGINE in {"postgres", "postgresql"} and _can_reach_postgres(_pg_host, _pg_port)
-if DB_ENGINE in {"postgres", "postgresql"} and not _use_postgres:
-    warnings.warn(
-        f"PostgreSQL di {_pg_host}:{_pg_port} tidak terjangkau, beralih otomatis ke SQLite (db.sqlite3).",
-        RuntimeWarning,
-        stacklevel=2,
-    )
-
-if _use_postgres:
+if _database_url.startswith(("postgres://", "postgresql://")):
+    _parsed = urlparse(_database_url)
+    _query_params = parse_qs(_parsed.query)
+    _db_options: dict[str, object] = {"connect_timeout": 5}
+    if "sslmode" in _query_params and _query_params["sslmode"]:
+        _db_options["sslmode"] = _query_params["sslmode"][0]
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "chatbot_faq_ti"),
-            "USER": os.getenv("POSTGRES_USER", "faq_user"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "faq_pass"),
-            "HOST": _pg_host,
-            "PORT": _pg_port,
+            "NAME": _parsed.path.lstrip("/") or "postgres",
+            "USER": unquote(_parsed.username or ""),
+            "PASSWORD": unquote(_parsed.password or ""),
+            "HOST": _parsed.hostname or "",
+            "PORT": str(_parsed.port or 5432),
             "CONN_MAX_AGE": 60,
             "CONN_HEALTH_CHECKS": True,
-            "OPTIONS": {
-                "connect_timeout": 5,
-                "options": (
-                    "-c statement_timeout=5000 "
-                    "-c lock_timeout=3000 "
-                    "-c idle_in_transaction_session_timeout=10000"
-                ),
-            },
+            "OPTIONS": _db_options,
         }
     }
 else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+    _use_postgres = DB_ENGINE in {"postgres", "postgresql"} and _can_reach_postgres(_pg_host, _pg_port)
+    if DB_ENGINE in {"postgres", "postgresql"} and not _use_postgres:
+        warnings.warn(
+            f"PostgreSQL di {_pg_host}:{_pg_port} tidak terjangkau, beralih otomatis ke SQLite (db.sqlite3).",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+    if _use_postgres:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": os.getenv("POSTGRES_DB", "chatbot_faq_ti"),
+                "USER": os.getenv("POSTGRES_USER", "faq_user"),
+                "PASSWORD": os.getenv("POSTGRES_PASSWORD", "faq_pass"),
+                "HOST": _pg_host,
+                "PORT": _pg_port,
+                "CONN_MAX_AGE": 60,
+                "CONN_HEALTH_CHECKS": True,
+                "OPTIONS": {
+                    "connect_timeout": 5,
+                    "options": (
+                        "-c statement_timeout=5000 "
+                        "-c lock_timeout=3000 "
+                        "-c idle_in_transaction_session_timeout=10000"
+                    ),
+                },
+            }
         }
-    }
+    else:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
 
 CACHES = {
     "default": {
@@ -124,7 +150,9 @@ TIME_ZONE = "Asia/Jakarta"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+WHITENOISE_USE_FINDERS = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # OWASP & Production Security Hardening (Agent_Memory 04 & 07)

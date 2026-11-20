@@ -5,6 +5,7 @@ import type {
   FaqListResponse,
 } from "../types/chat";
 
+const DEFAULT_TIMEOUT_MS = 25_000;
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
 function getCsrfToken(): string {
@@ -15,12 +16,38 @@ function getCsrfToken(): string {
   return match ? decodeURIComponent(match.slice("csrftoken=".length)) : "";
 }
 
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Permintaan melebihi batas waktu koneksi. Silakan coba lagi.");
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 async function parseJsonOrThrow<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const payload = data as { error?: string; message?: string };
     const message =
-      typeof (data as { error?: string }).error === "string"
-        ? (data as { error: string }).error
+      typeof payload.message === "string"
+        ? payload.message
+        : typeof payload.error === "string"
+        ? payload.error
         : "Terjadi kesalahan saat menghubungi server.";
     throw new Error(message);
   }
@@ -33,7 +60,7 @@ function deduplicatedGet<T>(url: string): Promise<T> {
     return existing;
   }
 
-  const requestPromise = fetch(url, {
+  const requestPromise = fetchWithTimeout(url, {
     method: "GET",
     credentials: "same-origin",
   })
@@ -71,7 +98,7 @@ export async function sendChatMessage(
     }
   }
 
-  const res = await fetch("/api/chat/", {
+  const res = await fetchWithTimeout("/api/chat/", {
     method: "POST",
     credentials: "same-origin",
     headers,
@@ -81,7 +108,7 @@ export async function sendChatMessage(
 }
 
 export async function resetChatHistory(): Promise<void> {
-  const res = await fetch("/api/chat/reset/", {
+  const res = await fetchWithTimeout("/api/chat/reset/", {
     method: "POST",
     credentials: "same-origin",
     headers: {
