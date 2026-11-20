@@ -18,8 +18,8 @@ function normalizeHtmlTagsToMarkdown(raw: string): string {
     .replace(/<\/?p\b[^>]*>/gi, "\n\n");
 }
 
-function renderInline(text: string): React.ReactNode[] {
-  const normalized = normalizeHtmlTagsToMarkdown(text);
+function renderInline(text: string, needsNormalize = true): React.ReactNode[] {
+  const normalized = needsNormalize ? normalizeHtmlTagsToMarkdown(text) : text;
   const tokenRegex =
     /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s<)\]]+|\n)/g;
   const parts = normalized.split(tokenRegex);
@@ -29,18 +29,21 @@ function renderInline(text: string): React.ReactNode[] {
 
     if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
       return (
-        <code key={idx} className="inline-code">
+        <code
+          key={idx}
+          className="rounded-[4px] border border-border-subtle bg-white/8 px-[5px] py-[1px] font-mono text-[0.82em] text-[#f1f5f9]"
+        >
           {part.slice(1, -1)}
         </code>
       );
     }
 
     if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
-      return <strong key={idx}>{renderInline(part.slice(2, -2))}</strong>;
+      return <strong key={idx}>{renderInline(part.slice(2, -2), false)}</strong>;
     }
 
     if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
-      return <em key={idx}>{renderInline(part.slice(1, -1))}</em>;
+      return <em key={idx}>{renderInline(part.slice(1, -1), false)}</em>;
     }
 
     const linkMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
@@ -51,7 +54,7 @@ function renderInline(text: string): React.ReactNode[] {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="chat-link"
+          className="text-[#60a5fa] underline underline-offset-2 hover:text-[#93c5fd]"
         >
           {linkMatch[1]}
         </a>
@@ -68,7 +71,7 @@ function renderInline(text: string): React.ReactNode[] {
             href={cleanUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="chat-link"
+            className="text-[#60a5fa] underline underline-offset-2 hover:text-[#93c5fd]"
           >
             {cleanUrl}
           </a>
@@ -98,9 +101,11 @@ function renderTableCellContent(rawCell: string): React.ReactNode {
 
     if (items.length > 1) {
       return (
-        <ul className="table-cell-list">
+        <ul className="m-0 flex list-disc flex-col gap-1 pl-3.5">
           {items.map((it, i) => (
-            <li key={i}>{renderInline(it)}</li>
+            <li key={i} className="leading-[1.45]">
+              {renderInline(it)}
+            </li>
           ))}
         </ul>
       );
@@ -128,20 +133,31 @@ function parseMarkdownTable(lines: string[], keyPrefix: number): React.ReactNode
   const dataRows = lines.slice(2).map(splitRow);
 
   return (
-    <div key={`table-${keyPrefix}`} className="table-wrap">
-      <table className="chat-table">
-        <thead>
+    <div
+      key={`table-${keyPrefix}`}
+      className="no-scrollbar my-2 overflow-x-auto rounded-[10px] border border-border-subtle bg-[#0c1220]"
+    >
+      <table className="w-full border-collapse text-left text-[0.82rem] leading-[1.5] sm:text-[0.88rem] sm:leading-[1.55]">
+        <thead className="border-b border-border-subtle bg-[#121c33]">
           <tr>
             {headerCells.map((th, idx) => (
-              <th key={idx}>{renderInline(th)}</th>
+              <th
+                key={idx}
+                className="px-2.5 py-2 text-[0.78rem] font-semibold tracking-[0.01em] text-[#f8fafc] first:whitespace-nowrap sm:px-3.5 sm:py-2.5 sm:text-[0.82rem]"
+              >
+                {renderInline(th)}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {dataRows.map((row, rowIdx) => (
-            <tr key={rowIdx}>
+            <tr key={rowIdx} className="group transition-colors hover:bg-[#1b2e59]/25">
               {headerCells.map((_, colIdx) => (
-                <td key={colIdx}>
+                <td
+                  key={colIdx}
+                  className="border-b border-[#1b2e59]/70 px-2.5 py-2 align-top text-text-primary first:whitespace-nowrap group-last:border-b-0 sm:px-3.5 sm:py-[11px]"
+                >
                   {renderTableCellContent(row[colIdx] ?? "")}
                 </td>
               ))}
@@ -182,9 +198,16 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
       }
       if (idx < rawLines.length) idx++;
       elements.push(
-        <div key={`code-${blockKey++}`} className="code-block-wrap">
-          {lang && <div className="code-block-header">{lang}</div>}
-          <pre className="code-block">
+        <div
+          key={`code-${blockKey++}`}
+          className="my-1 overflow-hidden rounded-[6px] border border-border-subtle bg-[#0a0e17]"
+        >
+          {lang && (
+            <div className="border-b border-border-subtle px-2.5 py-1 font-mono text-[0.72rem] text-text-muted lowercase">
+              {lang}
+            </div>
+          )}
+          <pre className="no-scrollbar m-0 overflow-x-auto px-3 py-2.5 font-mono text-[0.84rem] leading-[1.5] text-text-primary">
             <code>{codeLines.join("\n")}</code>
           </pre>
         </div>
@@ -212,14 +235,22 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
     }
 
     if (/^(?:[-*_]\s*){3,}$/.test(trimmed)) {
-      elements.push(<hr key={`hr-${blockKey++}`} className="chat-divider" />);
+      elements.push(
+        <hr
+          key={`hr-${blockKey++}`}
+          className="my-2.5 w-full border-none border-t border-border-subtle"
+        />
+      );
       idx++;
       continue;
     }
 
     if (trimmed.startsWith("#### ")) {
       elements.push(
-        <h4 key={`h4-${blockKey++}`} className="chat-h4">
+        <h4
+          key={`h4-${blockKey++}`}
+          className="mt-2 mb-0.5 text-[0.88rem] font-semibold tracking-[-0.01em] text-text-primary"
+        >
           {renderInline(trimmed.slice(5))}
         </h4>
       );
@@ -228,7 +259,10 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
     }
     if (trimmed.startsWith("### ")) {
       elements.push(
-        <h3 key={`h3-${blockKey++}`} className="chat-h3">
+        <h3
+          key={`h3-${blockKey++}`}
+          className="mt-2 mb-0.5 text-[0.96rem] font-semibold tracking-[-0.01em] text-text-primary"
+        >
           {renderInline(trimmed.slice(4))}
         </h3>
       );
@@ -237,7 +271,10 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
     }
     if (trimmed.startsWith("## ")) {
       elements.push(
-        <h2 key={`h2-${blockKey++}`} className="chat-h2">
+        <h2
+          key={`h2-${blockKey++}`}
+          className="mt-2 mb-0.5 text-[1.05rem] font-semibold tracking-[-0.01em] text-text-primary"
+        >
           {renderInline(trimmed.slice(3))}
         </h2>
       );
@@ -246,7 +283,10 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
     }
     if (trimmed.startsWith("# ")) {
       elements.push(
-        <h1 key={`h1-${blockKey++}`} className="chat-h1">
+        <h1
+          key={`h1-${blockKey++}`}
+          className="mt-2 mb-0.5 text-[1.15rem] font-semibold tracking-[-0.01em] text-text-primary"
+        >
           {renderInline(trimmed.slice(2))}
         </h1>
       );
@@ -261,7 +301,10 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         idx++;
       }
       elements.push(
-        <blockquote key={`quote-${blockKey++}`} className="chat-quote">
+        <blockquote
+          key={`quote-${blockKey++}`}
+          className="m-0 rounded-r-[6px] border-l-[3px] border-border-focus bg-bg-surface-hover px-3 py-2 text-text-secondary italic"
+        >
           {renderInline(quoteLines.join(" "))}
         </blockquote>
       );
@@ -288,8 +331,8 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
           idx++;
         } else if (
           curTrimmed &&
-          !isBulletItem &&
-          !isNumberedItem &&
+          !bulletMatch &&
+          !numberMatch &&
           listItems.length > 0 &&
           (rawLines[idx].startsWith("  ") || rawLines[idx].startsWith("\t"))
         ) {
@@ -302,7 +345,10 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
 
       if (isOrdered) {
         elements.push(
-          <ol key={`ol-${blockKey++}`} className="chat-ol">
+          <ol
+            key={`ol-${blockKey++}`}
+            className="m-0 flex list-decimal flex-col gap-1.5 pl-5 [&_li]:leading-[1.55]"
+          >
             {listItems.map((item, i) => (
               <li key={i}>{renderInline(item)}</li>
             ))}
@@ -310,11 +356,14 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         );
       } else {
         elements.push(
-          <ul key={`ul-${blockKey++}`} className="chat-ul">
+          <ul
+            key={`ul-${blockKey++}`}
+            className="m-0 flex list-disc flex-col gap-1.5 pl-5 [&_li]:leading-[1.55]"
+          >
             {listItems.map((item, i) => (
               <li key={i}>{renderInline(item)}</li>
             ))}
-          </ul >
+          </ul>
         );
       }
       continue;
@@ -338,12 +387,16 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
 
     if (paragraphLines.length > 0) {
       elements.push(
-        <p key={`p-${blockKey++}`} className="chat-paragraph">
+        <p key={`p-${blockKey++}`} className="m-0 leading-[1.62]">
           {renderInline(paragraphLines.join(" "))}
         </p>
       );
     }
   }
 
-  return <div className="markdown-body">{elements}</div>;
+  return (
+    <div className="flex flex-col gap-3 leading-[1.65] text-text-primary [&_strong]:font-semibold [&_strong]:text-white">
+      {elements}
+    </div>
+  );
 }

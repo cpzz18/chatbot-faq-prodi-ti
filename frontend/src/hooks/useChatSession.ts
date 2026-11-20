@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchChatState,
   resetChatHistory,
@@ -6,9 +6,17 @@ import {
 } from "../api/chatApi";
 import type { ApiKeyConfig, ChatMessage } from "../types/chat";
 
+const DEFAULT_QUICK_PROMPTS = [
+  "Apa visi dan misi Prodi TI PNM?",
+  "Syarat & alur magang PKL",
+  "Tata tertib praktikum lab",
+  "Info akreditasi & Tugas Akhir",
+];
+
 export interface UseChatSessionResult {
   messages: ChatMessage[];
   faqCount: number;
+  quickPrompts: string[];
   isHydrating: boolean;
   isSending: boolean;
   notice: string | null;
@@ -22,11 +30,13 @@ export interface UseChatSessionResult {
 export function useChatSession(): UseChatSessionResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [faqCount, setFaqCount] = useState<number>(0);
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(DEFAULT_QUICK_PROMPTS);
   const [isHydrating, setIsHydrating] = useState<boolean>(true);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [notice, setNotice] = useState<string | null>(null);
   // RAM-only browser state: tidak pernah ditulis ke localStorage, sessionStorage, atau cookie.
   const [apiKeyConfig, setApiKeyConfigState] = useState<ApiKeyConfig | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -35,6 +45,9 @@ export function useChatSession(): UseChatSessionResult {
         if (!mounted) return;
         setMessages(state.history);
         setFaqCount(state.faq_count);
+        if (Array.isArray(state.quick_prompts) && state.quick_prompts.length > 0) {
+          setQuickPrompts(state.quick_prompts);
+        }
       })
       .catch(() => {
         if (mounted) {
@@ -47,6 +60,9 @@ export function useChatSession(): UseChatSessionResult {
 
     return () => {
       mounted = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
@@ -78,12 +94,18 @@ export function useChatSession(): UseChatSessionResult {
       const trimmed = rawText.trim();
       if (!trimmed || isSending) return;
 
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setNotice(null);
       setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
       setIsSending(true);
 
       try {
-        const res = await sendChatMessage(trimmed, apiKeyConfig);
+        const res = await sendChatMessage(trimmed, apiKeyConfig, controller.signal);
         setMessages((prev) => [
           ...prev,
           {
@@ -97,20 +119,31 @@ export function useChatSession(): UseChatSessionResult {
           },
         ]);
       } catch (err) {
+        if (controller.signal.aborted) {
+          // Permintaan dibatalkan sengaja oleh pengguna saat reset
+          return;
+        }
         const errText =
           err instanceof Error
             ? err.message
-            : "Gagal terhubung ke server Django.";
+            : "Gagal terhubung ke server. Silakan coba lagi.";
         setMessages((prev) => [...prev, { role: "bot", text: errText }]);
       } finally {
-        setIsSending(false);
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+          setIsSending(false);
+        }
       }
     },
     [apiKeyConfig, isSending]
   );
 
   const clearSession = useCallback(async () => {
-    if (isSending) return;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsSending(false);
+    }
     try {
       await resetChatHistory();
       setMessages([]);
@@ -118,11 +151,12 @@ export function useChatSession(): UseChatSessionResult {
     } catch {
       setNotice("Gagal membersihkan riwayat percakapan.");
     }
-  }, [isSending]);
+  }, []);
 
   return {
     messages,
     faqCount,
+    quickPrompts,
     isHydrating,
     isSending,
     notice,

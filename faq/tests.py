@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import urllib.error
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -547,6 +548,23 @@ class ChatViewsTests(TestCase):
             )
             self.assertEqual(res_blocked.status_code, 429)
             self.assertEqual(res_blocked.json()["error_code"], "RATE_LIMIT_EXCEEDED")
+
+    def test_client_ip_proxy_trust_guard(self):
+        from django.test.client import RequestFactory
+        from faq.views import _get_client_ip
+
+        rf = RequestFactory()
+        req = rf.get(
+            "/api/chat/",
+            HTTP_X_FORWARDED_FOR="10.0.0.1, 10.0.0.2",
+            REMOTE_ADDR="192.168.1.50",
+        )
+
+        with patch.dict(os.environ, {"VERCEL": "", "DJANGO_TRUST_X_FORWARDED_FOR": "false"}):
+            self.assertEqual(_get_client_ip(req), "192.168.1.50")
+
+        with patch.dict(os.environ, {"VERCEL": "1"}):
+            self.assertEqual(_get_client_ip(req), "10.0.0.1")
 
     def test_llm_request_json_transient_retry_and_backoff(self):
         attempt_count = 0

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import uuid
 
 from django.conf import settings
@@ -44,28 +45,36 @@ def _get_request_id(request) -> str:
 
 
 def _get_client_ip(request) -> str:
-    """Ambil IP address klien dengan proteksi proxy reverse."""
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        return x_forwarded_for.split(",")[0].strip()
+    """Ambil IP address klien dengan proteksi reverse proxy tepercaya (Agent_Memory 04)."""
+    trust_proxy = (
+        getattr(settings, "SECURE_PROXY_SSL_HEADER", None) is not None
+        or os.getenv("VERCEL") == "1"
+        or os.getenv("DJANGO_TRUST_X_FORWARDED_FOR", "false").lower() == "true"
+    )
+    if trust_proxy:
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            return x_forwarded_for.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR") or "127.0.0.1"
 
 
 def _check_rate_limit(request, max_requests: int = 30, window_seconds: int = 60) -> bool:
-    """Rate limiter berbasis cache: batasi 30 request chat per menit per IP."""
+    """Rate limiter berbasis cache: inisialisasi & increment atomik (Agent_Memory 03 & 04)."""
     ip = _get_client_ip(request)
     key = f"ratelimit:chat:{ip}"
-    current = cache.get(key, 0)
-    if current >= max_requests:
-        return False
+
+    # Inisialisasi atomik key baru jika belum ada
+    if cache.add(key, 1, timeout=window_seconds):
+        return True
+
+    # Jika sudah ada, naikkan counter secara atomik
     try:
-        if current == 0:
-            cache.set(key, 1, timeout=window_seconds)
-        else:
-            cache.incr(key)
+        current = cache.incr(key)
     except Exception:
-        cache.set(key, current + 1, timeout=window_seconds)
-    return True
+        current = (cache.get(key) or 0) + 1
+        cache.set(key, current, timeout=window_seconds)
+
+    return current <= max_requests
 
 
 def _api_error(
