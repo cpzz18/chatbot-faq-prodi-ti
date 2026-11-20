@@ -10,8 +10,6 @@ import {
 interface ApiKeyModalProps {
   open: boolean;
   currentConfig: ApiKeyConfig | null;
-  serverLlmConfigured: boolean;
-  serverProvider: string | null;
   onSave: (config: ApiKeyConfig | null) => void;
   onClose: () => void;
 }

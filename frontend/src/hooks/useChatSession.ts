@@ -9,13 +9,10 @@ import type { ApiKeyConfig, ChatMessage } from "../types/chat";
 export interface UseChatSessionResult {
   messages: ChatMessage[];
   faqCount: number;
-  quickPrompts: string[];
   isHydrating: boolean;
   isSending: boolean;
   notice: string | null;
   apiKeyConfig: ApiKeyConfig | null;
-  serverLlmConfigured: boolean;
-  serverProvider: string | null;
   setApiKeyConfig: (config: ApiKeyConfig | null) => void;
   clearApiKey: () => void;
   sendMessage: (rawText: string) => Promise<void>;
@@ -25,14 +22,11 @@ export interface UseChatSessionResult {
 export function useChatSession(): UseChatSessionResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [faqCount, setFaqCount] = useState<number>(0);
-  const [quickPrompts, setQuickPrompts] = useState<string[]>([]);
   const [isHydrating, setIsHydrating] = useState<boolean>(true);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [notice, setNotice] = useState<string | null>(null);
   // RAM-only browser state: tidak pernah ditulis ke localStorage, sessionStorage, atau cookie.
   const [apiKeyConfig, setApiKeyConfigState] = useState<ApiKeyConfig | null>(null);
-  const [serverLlmConfigured, setServerLlmConfigured] = useState<boolean>(false);
-  const [serverProvider, setServerProvider] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -41,9 +35,6 @@ export function useChatSession(): UseChatSessionResult {
         if (!mounted) return;
         setMessages(state.history);
         setFaqCount(state.faq_count);
-        setQuickPrompts(state.quick_prompts);
-        setServerLlmConfigured(Boolean(state.server_llm_configured));
-        setServerProvider(state.server_provider ?? null);
       })
       .catch(() => {
         if (mounted) {
@@ -132,13 +123,10 @@ export function useChatSession(): UseChatSessionResult {
   return {
     messages,
     faqCount,
-    quickPrompts,
     isHydrating,
     isSending,
     notice,
     apiKeyConfig,
-    serverLlmConfigured,
-    serverProvider,
     setApiKeyConfig,
     clearApiKey,
     sendMessage,

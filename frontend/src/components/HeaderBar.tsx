@@ -11,8 +11,6 @@ interface HeaderBarProps {
   hasMessages: boolean;
   isSending: boolean;
   apiKeyConfig: ApiKeyConfig | null;
-  serverLlmConfigured: boolean;
-  serverProvider: string | null;
   onToggleSidebar: () => void;
   onOpenApiKeyModal: () => void;
   onClearSession: () => void;

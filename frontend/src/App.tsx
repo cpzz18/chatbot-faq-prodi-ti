@@ -23,8 +23,6 @@ export function App() {
     isSending,
     notice,
     apiKeyConfig,
-    serverLlmConfigured,
-    serverProvider,
     setApiKeyConfig,
     sendMessage,
     clearSession,
@@ -36,6 +34,8 @@ export function App() {
     searchQuery,
     setSearchQuery,
     isLoading: isCatalogLoading,
+    error: catalogError,
+    retry: retryCatalog,
   } = useFaqCatalog();
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
@@ -96,8 +96,6 @@ export function App() {
         hasMessages={messages.length > 0}
         isSending={isSending}
         apiKeyConfig={apiKeyConfig}
-        serverLlmConfigured={serverLlmConfigured}
-        serverProvider={serverProvider}
         onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         onOpenApiKeyModal={() => setApiKeyModalOpen(true)}
         onClearSession={() => void clearSession()}
@@ -110,9 +108,11 @@ export function App() {
           searchQuery={searchQuery}
           activeQuestion={lastUserMessage}
           isLoading={isCatalogLoading}
+          error={catalogError}
           isSending={isSending}
           onSearchChange={setSearchQuery}
           onSelectQuestion={handleSelectSidebarQuestion}
+          onRetry={retryCatalog}
         />
 
         <main className={`chat-panel ${isWelcome ? "is-welcome" : ""}`}>
@@ -186,8 +186,6 @@ export function App() {
       <ApiKeyModal
         open={apiKeyModalOpen}
         currentConfig={apiKeyConfig}
-        serverLlmConfigured={serverLlmConfigured}
-        serverProvider={serverProvider}
         onSave={setApiKeyConfig}
         onClose={() => setApiKeyModalOpen(false)}
       />
