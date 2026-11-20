@@ -76,20 +76,6 @@ chatbot-faq-prodi-ti/
    # Terminal 2 (Vite Dev Server :5173 -> proxy /api ke :8000)
    make fe-dev
    ```
-
-## Deploy ke Vercel + Neon PostgreSQL
-1. Buat database PostgreSQL gratis di [Neon.tech](https://neon.tech) dan salin *Connection String* (`postgresql://...`).
-2. Jalankan migrasi & seed awal dari terminal lokal ke Neon:
-   ```bash
-   DATABASE_URL="<URL_NEON_ANDA>" python manage.py migrate
-   DATABASE_URL="<URL_NEON_ANDA>" python manage.py seed_faqs
-   ```
-3. Import repositori di [Vercel](https://vercel.com), lalu set *Environment Variables*:
-   - `DATABASE_URL` = `<URL_NEON_ANDA>`
-   - `DJANGO_DEBUG` = `false`
-   - `DJANGO_SECRET_KEY` = `<random-secret-key>`
-4. Deploy — `vercel.json` dan `WhiteNoise` akan menyajikan Django API sekaligus static SPA React dari `faq/static/spa/`.
-
 ## Pengujian Otomatis
 ```bash
 # Frontend typecheck & production bundle
@@ -99,8 +85,3 @@ cd frontend && npx tsc --noEmit && npm run build && cd ..
 python manage.py check
 DB_ENGINE=sqlite python manage.py test --verbosity=2
 ```
-
-## Identitas Pengembang (Tugas Mandiri)
-- **Nama / NIM:** Robbin Chandra Falla A (`253307059`)
-- **Program Studi:** D-III Teknologi Informasi — Politeknik Negeri Madiun
-- **Cakupan:** Arsitektur Django 5 + PostgreSQL (Neon)/SQLite, Pure-Python TF-IDF RAG (`PureTfidfIndex`), Cache-Aside & Signals Invalidation, Multi-Provider BYOK LLM, Kurasi 18 Dataset FAQ, Deploy Vercel Serverless, serta Frontend React 19 + Tailwind CSS v4.
