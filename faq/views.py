@@ -113,6 +113,12 @@ def chat_page(request):
 
 
 @require_GET
+def chrome_devtools_well_known(request):
+    """Tangani request otomatis Chrome DevTools agar log server tetap bersih dari 404."""
+    return JsonResponse({})
+
+
+@require_GET
 def healthz_probe(request):
     """Liveness probe: pastikan web worker hidup tanpa membebani database."""
     req_id = _get_request_id(request)

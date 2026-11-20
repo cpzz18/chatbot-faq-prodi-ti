@@ -585,3 +585,53 @@ class ChatViewsTests(TestCase):
         self.assertIn("• Sistem Pakar", cleaned)
         self.assertIn("• Machine Learning", cleaned)
 
+    def test_chrome_devtools_well_known_returns_empty_json(self):
+        res = self.client.get("/.well-known/appspecific/com.chrome.devtools.json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {})
+
+    def test_working_model_affinity_avoids_repeated_404s(self):
+        cache.clear()
+        called_models: list[str] = []
+
+        def fake_opener(req, timeout=15):
+            payload = json.loads(req.data.decode("utf-8"))
+            model_id = payload["model"]
+            called_models.append(model_id)
+            if model_id == "openai/gpt-oss-120b":
+                raise urllib.error.HTTPError(
+                    req.full_url, 404, "Not Found", {}, io.BytesIO(b"Model not found")
+                )
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = json.dumps(
+                {"choices": [{"message": {"content": "Jawaban valid."}}]}
+            ).encode("utf-8")
+            mock_resp.__enter__.return_value = mock_resp
+            mock_resp.__exit__.return_value = None
+            return mock_resp
+
+        faqs = retrieve_faqs("syarat magang")
+        first = generate_rag_answer(
+            "pertanyaan satu",
+            faqs,
+            api_key="gsk_AffinityTestKey998877",
+            provider="groq",
+            http_opener=fake_opener,
+        )
+        self.assertEqual(first["mode"], "rag_llm")
+        self.assertEqual(first["model"], "llama-3.3-70b-versatile")
+        self.assertEqual(called_models, ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"])
+
+        # Panggilan kedua langsung memakai llama-3.3-70b-versatile tanpa mengulang 404
+        called_models.clear()
+        second = generate_rag_answer(
+            "pertanyaan dua berbeda",
+            faqs,
+            api_key="gsk_AffinityTestKey998877",
+            provider="groq",
+            http_opener=fake_opener,
+        )
+        self.assertEqual(second["mode"], "rag_llm")
+        self.assertEqual(second["model"], "llama-3.3-70b-versatile")
+        self.assertEqual(called_models, ["llama-3.3-70b-versatile"])
+
