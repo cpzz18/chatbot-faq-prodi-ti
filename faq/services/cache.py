@@ -1,10 +1,11 @@
+from collections import Counter
 import hashlib
+import math
 import random
 import re
 from typing import Any
 
 from django.core.cache import cache
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 from faq.models import FAQ
 
@@ -169,7 +170,64 @@ def get_active_faqs_cached() -> list[dict]:
     )
 
 
-def get_tfidf_bundle() -> tuple[list[dict], TfidfVectorizer, Any] | None:
+class PureTfidfIndex:
+    """Implementasi TF-IDF (unigram + bigram) & Cosine Similarity ringan tanpa dependensi scipy/numpy."""
+
+    def __init__(self) -> None:
+        self.idf: dict[str, float] = {}
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        words = re.findall(r"\b\w+\b", (text or "").lower())
+        if len(words) < 2:
+            return words
+        bigrams = [f"{words[i]} {words[i + 1]}" for i in range(len(words) - 1)]
+        return words + bigrams
+
+    def _vectorize_single(self, tokens: list[str]) -> dict[str, float]:
+        counts = Counter(tokens)
+        vec: dict[str, float] = {}
+        for term, tf in counts.items():
+            idf_val = self.idf.get(term, 0.0)
+            if idf_val > 0.0:
+                vec[term] = float(tf) * idf_val
+        norm = math.sqrt(sum(v * v for v in vec.values()))
+        if norm > 0.0:
+            for term in vec:
+                vec[term] /= norm
+        return vec
+
+    def fit_transform(self, documents: list[str]) -> list[dict[str, float]]:
+        n_docs = len(documents)
+        tokenized_docs = [self._tokenize(doc) for doc in documents]
+        df: Counter[str] = Counter()
+        for tokens in tokenized_docs:
+            df.update(set(tokens))
+
+        # Smooth IDF identik dengan scikit-learn: log((1 + N) / (1 + df)) + 1
+        self.idf = {
+            term: math.log((1.0 + n_docs) / (1.0 + freq)) + 1.0
+            for term, freq in df.items()
+        }
+        return [self._vectorize_single(tokens) for tokens in tokenized_docs]
+
+    def transform_one(self, query: str) -> dict[str, float]:
+        tokens = self._tokenize(query)
+        return self._vectorize_single(tokens)
+
+    @staticmethod
+    def cosine_scores(
+        query_vec: dict[str, float], doc_vecs: list[dict[str, float]]
+    ) -> list[float]:
+        if not query_vec:
+            return [0.0] * len(doc_vecs)
+        return [
+            sum(q_val * d_vec.get(term, 0.0) for term, q_val in query_vec.items())
+            for d_vec in doc_vecs
+        ]
+
+
+def get_tfidf_bundle() -> tuple[list[dict], PureTfidfIndex, list[dict[str, float]]] | None:
     """Cache-Aside untuk matriks TF-IDF agar tidak fit_transform berulang tiap request."""
     version = get_cache_version()
     faqs = get_active_faqs_cached()
@@ -196,7 +254,7 @@ def get_tfidf_bundle() -> tuple[list[dict], TfidfVectorizer, Any] | None:
         )
         for item in faqs
     ]
-    vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+    vectorizer = PureTfidfIndex()
     doc_matrix = vectorizer.fit_transform(corpus)
 
     _TFIDF_MEMORY_CACHE.update(
