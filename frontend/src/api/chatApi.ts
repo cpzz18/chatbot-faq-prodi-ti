@@ -19,10 +19,20 @@ function getCsrfToken(): string {
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
-  timeoutMs: number = DEFAULT_TIMEOUT_MS
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  externalSignal?: AbortSignal
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+  }
 
   try {
     return await fetch(url, {
@@ -30,12 +40,18 @@ async function fetchWithTimeout(
       signal: controller.signal,
     });
   } catch (err) {
+    if (externalSignal?.aborted) {
+      throw new DOMException("Permintaan dibatalkan oleh pengguna.", "AbortError");
+    }
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Permintaan melebihi batas waktu koneksi. Silakan coba lagi.");
     }
     throw err;
   } finally {
     window.clearTimeout(timeoutId);
+    if (externalSignal) {
+      externalSignal.removeEventListener("abort", onExternalAbort);
+    }
   }
 }
 
@@ -83,7 +99,8 @@ export function fetchFaqs(): Promise<FaqListResponse> {
 
 export async function sendChatMessage(
   message: string,
-  apiKeyConfig?: ApiKeyConfig | null
+  apiKeyConfig?: ApiKeyConfig | null,
+  signal?: AbortSignal
 ): Promise<ChatApiResponse> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -98,12 +115,17 @@ export async function sendChatMessage(
     }
   }
 
-  const res = await fetchWithTimeout("/api/chat/", {
-    method: "POST",
-    credentials: "same-origin",
-    headers,
-    body: JSON.stringify({ message }),
-  });
+  const res = await fetchWithTimeout(
+    "/api/chat/",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers,
+      body: JSON.stringify({ message }),
+    },
+    DEFAULT_TIMEOUT_MS,
+    signal
+  );
   return parseJsonOrThrow<ChatApiResponse>(res);
 }
 
