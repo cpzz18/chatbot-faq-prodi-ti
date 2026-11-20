@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchFaqs } from "../api/chatApi";
 import type { FaqListItem } from "../types/chat";
+import { useDebouncedValue } from "./useDebouncedValue";
 
 export interface FaqCategoryGroup {
   category: string;
@@ -36,27 +37,26 @@ function getInitialSearchQuery(): string {
 
 export function useFaqCatalog(): UseFaqCatalogResult {
   const [items, setItems] = useState<FaqListItem[]>([]);
-  const [searchQuery, setSearchQueryState] = useState<string>(getInitialSearchQuery);
+  const [searchQuery, setSearchQuery] = useState<string>(getInitialSearchQuery);
+  const debouncedQuery = useDebouncedValue(searchQuery, 200);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState<number>(0);
 
-  const setSearchQuery = useCallback((val: string) => {
-    setSearchQueryState(val);
-    if (typeof window !== "undefined") {
-      try {
-        const url = new URL(window.location.href);
-        if (val.trim()) {
-          url.searchParams.set("q", val.trim());
-        } else {
-          url.searchParams.delete("q");
-        }
-        window.history.replaceState(null, "", `${url.pathname}${url.search}`);
-      } catch {
-        // Safe fallback if history API is restricted
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const url = new URL(window.location.href);
+      if (debouncedQuery.trim()) {
+        url.searchParams.set("q", debouncedQuery.trim());
+      } else {
+        url.searchParams.delete("q");
       }
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    } catch {
+      // Safe fallback if history API is restricted
     }
-  }, []);
+  }, [debouncedQuery]);
 
   const retry = useCallback(() => {
     setReloadTick((prev) => prev + 1);
@@ -94,7 +94,7 @@ export function useFaqCatalog(): UseFaqCatalogResult {
   }, [reloadTick]);
 
   const groups = useMemo<FaqCategoryGroup[]>(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const query = debouncedQuery.trim().toLowerCase();
     const filtered = query
       ? items.filter(
           (item) =>
@@ -125,7 +125,7 @@ export function useFaqCatalog(): UseFaqCatalogResult {
         if (orderA !== orderB) return orderA - orderB;
         return a.category.localeCompare(b.category);
       });
-  }, [items, searchQuery]);
+  }, [items, debouncedQuery]);
 
   return {
     groups,
